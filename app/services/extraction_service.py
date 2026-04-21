@@ -1,17 +1,22 @@
 import base64
 import json
+import logging
 from anthropic import AsyncAnthropic
 from app.core.config import settings
 from app.core.exceptions import ExtractionError
 from app.schemas.patient import PatientData
 
+logger = logging.getLogger(__name__)
+
 client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 
 async def extract_patient_data(pdf_bytes: bytes) -> PatientData:
+    logger.info("Starting extraction, PDF size: %d bytes", len(pdf_bytes))
     pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
 
     try:
+        logger.info("Calling Claude API (model: claude-haiku-4-5-20251001)")
         response = await client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=256,
@@ -42,15 +47,22 @@ async def extract_patient_data(pdf_bytes: bytes) -> PatientData:
             ],
         )
         raw_json = response.content[0].text
+        logger.info("Claude raw response: %r", raw_json)
     except Exception as e:
+        logger.error("Claude API call failed: %s", e, exc_info=True)
         raise ExtractionError(f"Claude API call failed: {e}") from e
 
     try:
         data = json.loads(raw_json)
-    except json.JSONDecodeError:
+        logger.info("Parsed JSON: %s", data)
+    except json.JSONDecodeError as e:
+        logger.error("Claude returned non-JSON response. raw=%r error=%s", raw_json, e)
         raise ExtractionError("Claude returned non-JSON response")
 
     try:
-        return PatientData(**data)
+        patient = PatientData(**data)
+        logger.info("Extraction successful: %s %s dob=%s", patient.first_name, patient.last_name, patient.date_of_birth)
+        return patient
     except Exception as e:
+        logger.error("Schema validation failed: %s, data=%s", e, data)
         raise ExtractionError(f"Claude response failed schema validation: {e}") from e

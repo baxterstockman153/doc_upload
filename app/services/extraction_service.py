@@ -1,3 +1,4 @@
+import base64
 import json
 from anthropic import AsyncAnthropic
 from app.core.config import settings
@@ -7,7 +8,9 @@ from app.schemas.patient import PatientData
 client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
 
-async def extract_patient_data(raw_text: str) -> PatientData:
+async def extract_patient_data(pdf_bytes: bytes) -> PatientData:
+    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
+
     try:
         response = await client.messages.create(
             model="claude-3-5-haiku-20241022",
@@ -19,7 +22,23 @@ async def extract_patient_data(raw_text: str) -> PatientData:
                 "Do not include any explanation, markdown, or text outside the JSON object."
             ),
             messages=[
-                {"role": "user", "content": f"Extract patient information from this text:\n\n{raw_text}"}
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "document",
+                            "source": {
+                                "type": "base64",
+                                "media_type": "application/pdf",
+                                "data": pdf_b64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": "Extract patient information from this document.",
+                        },
+                    ],
+                }
             ],
         )
         raw_json = response.content[0].text

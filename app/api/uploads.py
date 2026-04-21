@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.exceptions import ExtractionError
 from app.schemas.order import OrderCreate, OrderResponse
-from app.services import document_service, extraction_service, order_service
+from app.services import extraction_service, order_service
 
 router = APIRouter(prefix="/orders", tags=["uploads"])
 
@@ -13,13 +13,10 @@ async def upload_order(file: UploadFile = File(...), db: AsyncSession = Depends(
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=400, detail="Only PDF files are accepted")
 
-    raw_text = await document_service.extract_text_from_upload(file)
-
-    if not raw_text.strip():
-        raise HTTPException(status_code=422, detail="No text could be extracted from the document")
+    pdf_bytes = await file.read()
 
     try:
-        patient_data = await extraction_service.extract_patient_data(raw_text)
+        patient_data = await extraction_service.extract_patient_data(pdf_bytes)
     except ExtractionError as e:
         raise HTTPException(status_code=422, detail=str(e))
 

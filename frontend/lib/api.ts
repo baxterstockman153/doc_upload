@@ -11,8 +11,16 @@ export async function uploadPDF(file: File): Promise<OrderResponse> {
     body: formData,
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Upload failed: ${res.status}`);
+    let message: string;
+    try {
+      const body = await res.json();
+      message = typeof body?.detail === "string"
+        ? body.detail
+        : `Upload failed (${res.status})`;
+    } catch {
+      message = `Upload failed (${res.status})`;
+    }
+    throw new Error(message);
   }
   return res.json();
 }

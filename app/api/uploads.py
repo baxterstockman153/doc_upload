@@ -26,7 +26,10 @@ async def upload_order(file: UploadFile = File(...), db: AsyncSession = Depends(
         patient_data = await extraction_service.extract_patient_data(pdf_bytes)
     except ExtractionError as e:
         logger.error("Extraction failed: %s", e)
-        raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(
+            status_code=422,
+            detail="Failed to extract patient data from the uploaded document. Please ensure it is a valid patient record PDF."
+        )
 
     order_create = OrderCreate(
         first_name=patient_data.first_name,

@@ -14,9 +14,7 @@ def _validate_dob(v: date) -> date:
     today = date.today()
     if v > today:
         raise ValueError("date_of_birth must not be in the future")
-    if (today - v).days > 120 * 365:
-        raise ValueError("date_of_birth must not be more than 120 years in the past")
-    return v
+return v
 
 
 class OrderCreate(BaseModel):

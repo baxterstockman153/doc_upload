@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import re
 from anthropic import AsyncAnthropic
 from app.core.config import settings
 from app.core.exceptions import ExtractionError
@@ -43,10 +44,16 @@ async def extract_patient_data(pdf_bytes: bytes) -> PatientData:
                             "text": "Extract patient information from this document.",
                         },
                     ],
-                }
+                },
+                {
+                    "role": "assistant",
+                    "content": "{",
+                },
             ],
         )
-        raw_json = response.content[0].text
+        raw_json = "{" + response.content[0].text
+        raw_json = re.sub(r"^```(?:json)?\s*", "", raw_json.strip())
+        raw_json = re.sub(r"\s*```$", "", raw_json)
         logger.info("Claude raw response: %r", raw_json)
     except Exception as e:
         logger.error("Claude API call failed: %s", e, exc_info=True)

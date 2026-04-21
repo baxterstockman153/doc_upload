@@ -14,7 +14,7 @@ def _validate_dob(v: date) -> date:
     today = date.today()
     if v > today:
         raise ValueError("date_of_birth must not be in the future")
-return v
+    return v
 
 
 class OrderCreate(BaseModel):
